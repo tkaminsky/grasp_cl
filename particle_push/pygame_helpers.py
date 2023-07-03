@@ -64,11 +64,8 @@ class Particle():
         pygame.draw.circle(screen, self.colour, (int(self.x), int(self.y)), self.size, self.thickness)
 
     def move(self):
-        #(self.angle, self.speed) = addVectors((self.angle, self.speed), gravity)
-        # print(self.name, self.speed)
         self.x += math.sin(self.angle) * self.speed
         self.y -= math.cos(self.angle) * self.speed
-        # self.speed *= self.drag
         self.speed = 0
 
     def bounce(self):
