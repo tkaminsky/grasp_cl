@@ -4,9 +4,11 @@ import math
 import gym
 from gym import Env
 import numpy as np
-from gym.spaces import Tuple, Discrete, Box
+import gym.spaces as spaces
 
 from pygame_helpers import *
+from PIL import Image
+import cv2
 
 # Particle push class
 class particlePush(Env):
@@ -14,8 +16,14 @@ class particlePush(Env):
         super(particlePush, self).__init__()
 
         # Initialize render settings
-        self.screen = pygame.display.set_mode((width, height))
+        if render_mode == 'rgb_array':
+            self.screen = pygame.display.set_mode((width, height), flags=pygame.HIDDEN)
+        elif render_mode == 'human':
+            self.screen = pygame.display.set_mode((width, height))
+
         pygame.display.set_caption('Particle Push')
+        self.w = width
+        self.h = height
         self.render_mode = render_mode
 
         # Specify POMDP parameters - in this case, ball number, size, and location + agent_location
@@ -38,7 +46,13 @@ class particlePush(Env):
         self.T = 10000
         self.goal_reached = False
 
-        self.observation_space = Tuple()
+        # Observation space is a tuple of agent state and ball states
+        self.observation_space = spaces.Dict({
+            'agent_state': spaces.Box(low=np.array([0.,0.]), high=np.array([self.w, self.h]), shape=(2,), dtype=np.float32),
+            'ball_states': spaces.Box(low=np.array([[0.,0.]]*self.num_balls), high=np.array([[self.w, self.h]]*self.num_balls), shape=(self.num_balls, 2), dtype=np.float32)
+        })
+
+        self.action_space = spaces.Box(low=np.array([-1.,-1.]), high=np.array([1.,1.]), shape=(2,), dtype=np.float32)
 
         # Initialize environment
         self.reset()
@@ -74,8 +88,8 @@ class particlePush(Env):
         return self.get_state()
     
     def render(self):
-        self.draw_elements_on_canvas()
-        return self.screen
+        vis = self.draw_elements_on_canvas()
+        return vis
     
     def close(self):
         pygame.quit()
@@ -89,8 +103,13 @@ class particlePush(Env):
             pygame.draw.circle(self.screen, (0,255,0), (self.ball_goals[i][0], self.ball_goals[i][1]), 20, 0)
 
         self.agent.display(self.screen)
-        
-        pygame.display.flip()
+
+        if self.render_mode == 'human':
+            pygame.display.flip()
+            return None
+        elif self.render_mode == 'rgb_array':
+            x3 = pygame.surfarray.array3d(self.screen)
+            return np.uint8(x3)
 
     def get_state(self):
         agent_state = np.array([self.agent.x, self.agent.y])

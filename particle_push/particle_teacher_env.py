@@ -4,6 +4,8 @@ import math
 import gym
 from gym import Env
 import numpy as np
+import matplotlib.pyplot as plt
+import cv2
 
 from pygame_helpers import *
 from particle_push_env import particlePush
@@ -15,6 +17,8 @@ class particlePushTeacher(Env):
         self.student = student
         self.game = None
 
+        self.render_mode = render_mode
+
         self.reward = 0
         self.t = 0
         self.T = 100
@@ -25,6 +29,8 @@ class particlePushTeacher(Env):
         return
     
     def render(self):
+        if self.render_mode == 'rgb_array':
+            return self.game.render()
         self.game.draw_elements_on_canvas()
         return self.screen
     
@@ -38,19 +44,8 @@ class particlePushTeacher(Env):
 
         # Create a new particlePush environment with the specified parameters
         # Sample 9 random initial agent locations
-        agent_locs = np.random.uniform(low=0, high=2, size=(9, 2)) * 200
-        self.game = gym.vector.SyncVectorEnv([
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[0], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[1], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[2], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[3], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[4], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[5], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[6], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[7], action['ball_goals']),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], agent_locs[8], action['ball_goals'])
-        ])
-        # self.game = particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], action['agent_init'], action['ball_goals'])
+
+        self.game = particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], action['agent_init'], action['ball_goals'], render_mode=self.render_mode)
         obs = self.game.reset()
 
         # Run a round of the game with the student policy
@@ -61,7 +56,11 @@ class particlePushTeacher(Env):
             print(reward)
             
             # Render the game
-            self.game.render()
+            im = self.game.render()
+            cv2.imshow('Setting', im)
+            cv2.waitKey(10)
+            
+
             
             if term or trunc:
                 break
