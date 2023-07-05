@@ -37,9 +37,9 @@ class particlePush(Env):
         self.agent_weight = 1
         self.agent_size = 10
         self.ball_weight = 1e-6
-        self.v = 10
+        self.v = 20
         self.reward = 0
-        self.reward_threshold = 10
+        self.reward_threshold = 5
         self.reward_on_success = 1
         self.reward_on_failure = 0
         self.t = 0
@@ -100,7 +100,7 @@ class particlePush(Env):
 
         for i, particle in enumerate(self.balls):
             particle.display(self.screen)
-            pygame.draw.circle(self.screen, (0,255,0), (self.ball_goals[i][0], self.ball_goals[i][1]), 20, 0)
+            pygame.draw.circle(self.screen, (0,255,0), (self.ball_goals[i][0], self.ball_goals[i][1]), 5, 0)
 
         self.agent.display(self.screen)
 
@@ -120,12 +120,20 @@ class particlePush(Env):
         return agent_state, ball_states
 
     def get_reward(self):
-        dist = 0
-        for i, ball in enumerate(self.balls):
-            dist += np.sqrt( (ball.x - self.ball_goals[i][0])**2 + (ball.y - self.ball_goals[i][1])**2 )
-        if dist < self.reward_threshold:
+        info = self.get_info()
+        if all(info):
+            self.goal_reached = True
             return self.reward_on_success
         return self.reward_on_failure
+    
+    def get_info(self):
+        on_goal = [False for _ in range(self.num_balls)]
+        for i, ball in enumerate(self.balls):
+            dist = np.sqrt( (ball.x - self.ball_goals[i][0])**2 + (ball.y - self.ball_goals[i][1])**2 )
+            if dist < self.reward_threshold:
+                on_goal[i] = True
+        return on_goal
+            
 
     def step(self, action):
         # Parametrize the action ( vector with norm <= 1 )
