@@ -50,7 +50,6 @@ class particlePushTeacher(Env):
         return self.reward
     
     def step(self, action):
-        print("Hello?")
         # Action is a dictionary that looks like the following - this dictionary specifies the game environment
         # "num_balls" : Int
         # "ball_sizes" : Int array
@@ -61,22 +60,14 @@ class particlePushTeacher(Env):
         # Create a new particlePush environment with the specified parameters
         # Sample 9 random initial agent locations
 
-        # self.game = particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], action['agent_init'], action['ball_goals'], render_mode='rgb_array')
-
-        self.game = gym.vector.AsyncVectorEnv([
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], action['agent_init'], action['ball_goals'], render_mode='rgb_array'),
-            lambda: particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], action['agent_init'], action['ball_goals'], render_mode='rgb_array')
-        ])
-
-        print("Does this work?")
+        self.game = particlePush(action['num_balls'], action['ball_sizes'], action['ball_inits'], action['agent_init'], action['ball_goals'], render_mode='rgb_array')
 
         self.screen = self.game.screen
         obs = self.game.reset()
 
         # Run a round of the game with the student policy
         while True:
-            student_action_a = self.student(obs[0], action[0])
-            student_action = [student_action_a, student_action_a]
+            student_action = self.student(obs, action)
             
             
             obs, reward, term, trunc, info = self.game.step(student_action)

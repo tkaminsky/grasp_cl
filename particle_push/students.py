@@ -3,7 +3,7 @@ import numpy as np
 # Requires access to the environment parameters and the environment to function
 def whiteBoxStudent(state, env_params, env):
     # Says whether each ball is in its goal
-    ball_status = env.game.get_info()
+    ball_status = env.get_info()
     # Find the smallest index of a ball that isn't in its goal
     goal_ball_idx = np.argmin(ball_status)
     # Find the line between the ball and the goal
@@ -28,7 +28,7 @@ def whiteBoxStudent(state, env_params, env):
 
     atg_length = np.linalg.norm(ball_goal - agent_state)
 
-    min_l = env.game.agent_size + env.game.ball_sizes[goal_ball_idx] + 3
+    min_l = env.agent_size + env.ball_sizes[goal_ball_idx] + 3
 
     # If the distance between the agent and the ball is greater than 30, move towards the ball
     if atb_length > min_l:
