@@ -3,3 +3,7 @@ TeachMyAgent/
 teachDeepRL/
 ray_results/
 results/
+models/
+runs/
+videos/
+wandb/
