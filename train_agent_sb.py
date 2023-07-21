@@ -13,13 +13,14 @@ from wandb.integration.sb3 import WandbCallback
 
 config = {
     "policy_type": "MlpPolicy",
-    "total_timesteps": 500_000,
+    "total_timesteps":  10_000_000,
     "env_name": "particlePushSimple",
     "Algorithm": "PPO"
 }
 run = wandb.init(
-    project="ParticlePush-known_bg",
-    notes="Shifted loss penalty by ball radius.",
+    project="ParticlePush-v2",
+    name='PPO-500K-16AS-FixedBallPos',
+    notes="10M iterations / 16 AS size / All varied.",
     config=config,
     sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
     monitor_gym=True,  # auto-upload the videos of agents playing the game
@@ -35,7 +36,7 @@ def make_env():
 
 env = DummyVecEnv([make_env])
 # env = VecVideoRecorder(env, f"videos/{run.id}", record_video_trigger=lambda x: x % 2000 == 0, video_length=200)
-model = PPO(config["policy_type"], env, verbose=1, tensorboard_log=f"runs/{run.id}")
+model = PPO(config["policy_type"], env, verbose=1, tensorboard_log=f"runs/{run.id}", batch_size=64, )
 model.learn(
     total_timesteps=config["total_timesteps"],
     callback=WandbCallback(

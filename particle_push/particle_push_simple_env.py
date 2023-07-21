@@ -10,8 +10,9 @@ from .pygame_helpers import *
 
 # Particle push class
 class particlePushSimple(Env):
-    def __init__(self, action_space_size=32, agent_init=None, ball_init=None, ball_goal=None, render_mode='rgb_array'):
+    def __init__(self, action_space_size=16, agent_init=None, ball_init=None, ball_goal=None, render_mode='rgb_array'):
         super(particlePushSimple, self).__init__()
+
 
         # Initialize render settings
         if render_mode == 'rgb_array':
@@ -34,17 +35,19 @@ class particlePushSimple(Env):
         self.ball_goal = [200, 300] if ball_goal is None else ball_goal
         self.agent_init = [200, 50] if agent_init is None else agent_init
 
+        self.use_dense_reward = True
+
         # Static hyperparameters
         self.agent_weight = 1
         self.agent_size = 10
         self.ball_weight = 1e-6
-        self.v = 20
+        self.v = 50
         self.reward = 0
         self.reward_threshold = 10
         self.reward_on_success = 1
         self.reward_on_failure = 0
         self.t = 0
-        self.T = 5000
+        self.T = 200
         self.goal_reached = False
 
         self.observation_space = spaces.Box(low=np.array([[-1.,-1.],[-1.,-1.],[-1.,-1.]]), high=np.array([[1.,1.],[1.,1.],[1.,1.]]), shape=(3,2), dtype=np.float32)
@@ -54,6 +57,8 @@ class particlePushSimple(Env):
         # Uniformly sample action_space_size angles from 0 to 2pi
         self.action_map = {i: [math.cos(2*math.pi*i/action_space_size), math.sin(2*math.pi*i/action_space_size)] for i in range(action_space_size)}
         self.action_map[action_space_size] = [0., 0.]
+
+        self.min_reward = np.sqrt(2) * (2 * self.w + 2 * self.h - 3*self.ball_sizes - self.agent_size)
 
         # Initialize environment
         self.reset()
@@ -68,7 +73,12 @@ class particlePushSimple(Env):
 
         # Randomize every unspecified parameter
         self.num_balls = 1
-        self.randomize_balls = False    
+        self.randomize_balls = False  
+
+        # ball_pos = np.random.randint(low=self.ball_sizes, high=(width - self.ball_sizes), size=(2,))  
+        # self.ball_init = ball_pos
+        # goal_pos = np.random.randint(low=self.ball_sizes, high=(width - self.ball_sizes), size=(2,))
+        # self.ball_goal = goal_pos
 
         
         particle = Particle(self.ball_init, self.ball_sizes, self.ball_weight)
@@ -186,25 +196,34 @@ class particlePushSimple(Env):
         ball_rewards = np.zeros(self.num_balls)
 
         for i, ball in enumerate(self.balls):
-            init_dist = np.sqrt( (self.agent_init[0] - ball.x)**2 + (ball.y - self.agent_init[1])**2 )
-            curr_dist = np.sqrt( (ball.x - self.agent.x)**2 + (ball.y - self.agent.y)**2 )
-            ball_rewards[i] = self._dense_reward_helper(init_dist, curr_dist, 1)
+            # init_dist = np.sqrt( (self.agent_init[0] - ball.x)**2 + (ball.y - self.agent_init[1])**2 )
+            # curr_dist = np.sqrt( (ball.x - self.agent.x)**2 + (ball.y - self.agent.y)**2 )
+            # ball_rewards[i] = self._dense_reward_helper(init_dist, curr_dist, 1)
+            ball_rewards[i] = np.sqrt( (ball.x - self.agent.x)**2 + (ball.y - self.agent.y)**2 )
         # Add the reward for the closest ball
-        reward += np.max(ball_rewards)
+        reward -= np.max(ball_rewards) / 100
 
         # Add a reward if d(agent, goal) > d(ball, goal)
-        for i, ball in enumerate(self.balls):
-            agent_dist = np.sqrt( (self.agent.x - self.ball_goal[0])**2 + (self.agent.y - self.ball_goal[1])**2 )
-            ball_dist = np.sqrt( (ball.x - self.ball_goal[0])**2 + (ball.y - self.ball_goal[1])**2 )
-            delta = (agent_dist - (ball_dist + self.ball_sizes)) / agent_dist
-            if delta < 0:
-                reward += delta * .1
+        # for i, ball in enumerate(self.balls):
+        #     agent_dist = np.sqrt( (self.agent.x - self.ball_goal[0])**2 + (self.agent.y - self.ball_goal[1])**2 )
+        #     ball_dist = np.sqrt( (ball.x - self.ball_goal[0])**2 + (ball.y - self.ball_goal[1])**2 )
+        #     delta = (agent_dist - (ball_dist + self.ball_sizes)) / agent_dist
+        #     if delta < 0:
+        #         reward += delta * .1
 
         # Add a large reward if any ball is closer to its goal than it was at initialization
         for i, ball in enumerate(self.balls):
-            init_dist = np.sqrt( (self.ball_init[0] - self.ball_goal[0])**2 + (self.ball_init[1] - self.ball_goal[1])**2 )
-            curr_dist = np.sqrt( (ball.x - self.ball_goal[0])**2 + (ball.y - self.ball_goal[1])**2 )
-            reward += self._dense_reward_helper(init_dist, curr_dist, 10)
+            # init_dist = np.sqrt( (self.ball_init[0] - self.ball_goal[0])**2 + (self.ball_init[1] - self.ball_goal[1])**2 )
+            # curr_dist = np.sqrt( (ball.x - self.ball_goal[0])**2 + (ball.y - self.ball_goal[1])**2 )
+            # reward += self._dense_reward_helper(init_dist, curr_dist, 10)
+            reward -= np.sqrt( (ball.x - self.ball_goal[0])**2 + (ball.y - self.ball_goal[1])**2 ) / 10
+
+
+        # Scale so min_reward maps to -1
+        reward = reward / self.min_reward
+
+        assert reward <= 0
+        assert reward >= -1
 
         return reward
 
@@ -244,17 +263,21 @@ class particlePushSimple(Env):
 
         # Check if either end condition is met
         term = True if self.goal_reached else False
+        # term = False
         trunc = True if self.t >= self.T else False
         done = term or trunc
 
         self.clock.tick(200)
 
-        if term:
-            remaining_time = self.T - self.t
-            reward = self.dense_reward() + remaining_time * 10000
-            print("Term!")
+        if self.use_dense_reward:
+            if term:
+                # remaining_time = self.T - self.t
+                # reward = self.dense_reward() + remaining_time * 10000
+                reward = self.dense_reward() + 1
+            else:
+                reward = self.dense_reward()
         else:
-            reward = self.dense_reward()
+            reward = curr_reward
 
         self.t += 1
 
